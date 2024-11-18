@@ -1,1 +1,16 @@
 # Getting-the-Proper-Grip-A-Longitudinal-Study-of-How-Infants-Learn-to-Adapt-Action-Plans
+
+Repository containing analysis scripts used to examine longitudinal data on adaptive tool-use planning.
+
+## Abstract
+Across ages and cultures, planning is a hallmark of human intelligence and a critical factor in human survival and proper function. Because everyday environments are variable and full of novel situations, children must learn to adapt their planning to new problems in real time. Previous cross-sectional studies showed that adaptive planning begins in infancy and improves with age and experience. However, little is known about how developmental improvements in adaptive planning occur. Do infants first learn to adapt their planning with one tool before generalizing this skill, or does their experience lead to immediate generalization? Here, we addressed this question by longitudinally testing 9 infants in weekly sessions in a tool-use planning task. Infants were presented with familiar and unfamiliar tools and we scored whether they applied habitual or adapted grasps. We also tested how infants plan when they use some of the tools towards themselves or toward other objects. Using pattern-mixture and growth-curve models, we show that infants first master planning of the most experienced action—spoon towards their mouth—and later generalize the plan to other tools and targets. We also characterise the consistency of planning adaptability by tracking the developmental trajectory of this emerging skill. Our findings suggest that infants gradually establish a plan for experienced actions to serve as a foundation for generalization of planning to other contexts. Our findings also have implications for our understanding of how mental representations during planning become stable over infancy and the role of experience in this process.
+
+## File structure
+
+This repository contains the R scripts used for data analysis:
+
+ - **Tool_Effect.R**:
+    This script contains the model used to explore differences in how infants learn to adaptively grasp different tools.
+
+ - **Target_Effect.R**:
+    This script explores differences in the development of adaptive tool planning depending on the target of the action.
