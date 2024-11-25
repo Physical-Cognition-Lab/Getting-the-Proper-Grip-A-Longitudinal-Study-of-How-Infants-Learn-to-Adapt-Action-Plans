@@ -5,21 +5,21 @@ library(easystats)
 library(patchwork)
 library(emmeans)
 
+
+
 # Setting and paths -------------------------------------------------------
 
 # Uncomment and set your working directory if needed
-# setwd("path/to/your/directory")
+setwd("path/to/your/directory")
 
 # Load data
-db  =  read.csv('.\\Data\\PlanningInfants_Session_Data_New.csv')
-db = db[!is.na(db$Grasp_onset), ]
+db  =  read.csv('.\\Data\\PlanningInfants_Session_Data.csv')
+
 
 
 # Fix data ---------------------------------------------------------------
 
 db = db[!is.na(db$Grasp_onset), ]
-
-db[db$ID_id_num ==4 & db$ID_session_num == 5,]$ID_bdate = "08/12/2002"
 
 S6 = unique(db[db$ID_id_num ==2 & db$ID_session_num == 6,]$ID_tdate)
 S7 = unique(db[db$ID_id_num ==2 & db$ID_session_num == 7,]$ID_tdate)
@@ -64,8 +64,6 @@ df = db %>%
   )
 
 
-df$Trial_target = factor(df$Trial_target)
-
 # Filter only the one that have direction and the spoon adn brush
 df = df %>% filter(
   Trial_target == 'i' |  Trial_target == 'e',
@@ -78,10 +76,7 @@ df = df %>% filter(
 df$AgeSt = standardize(df$Age)
 
 db = df %>%
-  filter( Trial_tool_direction == 'r' | Trial_tool_direction == 'l') %>% 
   mutate(Trial_tool_direction =  factor(Trial_tool_direction, levels = c("l", "r")))
-
-db$Trial_tool = droplevels(db$Trial_tool)
 
 
 

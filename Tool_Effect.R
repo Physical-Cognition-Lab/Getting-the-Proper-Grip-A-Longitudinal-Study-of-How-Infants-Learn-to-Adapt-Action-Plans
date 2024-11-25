@@ -15,7 +15,7 @@ library(emmeans)
 # Setting and paths -------------------------------------------------------
 
 # Uncomment and set your working directory if needed
-# setwd("path/to/your/directory")
+setwd("path/to/your/directory")
 
 # Load data
 db  =  read.csv('.\\Data\\PlanningInfants_Session_Data.csv')
@@ -25,8 +25,6 @@ db  =  read.csv('.\\Data\\PlanningInfants_Session_Data.csv')
 # Fix data ---------------------------------------------------------------
 
 db = db[!is.na(db$Grasp_onset), ]
-
-db[db$ID_id_num ==4 & db$ID_session_num == 5,]$ID_bdate = "08/12/2002"
 
 S6 = unique(db[db$ID_id_num ==2 & db$ID_session_num == 6,]$ID_tdate)
 S7 = unique(db[db$ID_id_num ==2 & db$ID_session_num == 7,]$ID_tdate)
@@ -78,9 +76,6 @@ df = db %>%
   ungroup()
 
 df$AgeSt = standardize(df$Age)
-
-df = df %>%
-  filter( Trial_tool_direction == 'r' | Trial_tool_direction == 'l')
 
 db = df %>%  filter( Trial_target != 'e') %>% 
   mutate(Trial_tool_direction =  factor(Trial_tool_direction, levels = c("l", "r")))
@@ -211,26 +206,6 @@ ggsave('.\\Results\\Plots\\ToolDirection.svg',
 
 
 
-### Second unofficial plot
-Est_mod2 = get_datagrid(mod, by = c('Trial_tool', 'Trial_tool_direction','AgeSt'))
-Est_mod2 = bind_cols(Est_mod2, as.data.frame(get_predicted(mod, Est_mod2, ci = .89)))[,1:8]
-Est_mod2$Age = unstandardise(Est_mod2$AgeSt, reference = db$Age)
-
-Est_mod2$Trial_tool_direction = factor(Est_mod2$Trial_tool_direction, 
-                                      levels = c("l", "r"), 
-                                      labels = c("Handle-left", "Handle-right"))
-
-
-Est_mod2 %>% 
-ggplot(aes(x = Age, y = Predicted, color = Trial_tool, fill = Trial_tool ))+
-  geom_line(lwd = 1.2)+
-  # geom_errorbar(aes(ymin = CI_low, ymax = CI_high), position = position_dodge(width = 1), width =.5, lwd = 1.2, alpha = 0.4)+
-  geom_ribbon(aes(ymin = Predicted-SE, ymax = Predicted+SE), alpha = 0.4, color = 'transparent')+
-  theme_bw(base_size = 20)+
-  labs(x = 'Age', color = 'Tool',fill = 'Tool', y = 'Probability')+
-  facet_wrap(~Trial_tool_direction)+
-  scale_color_manual(values = custom_colors)+
-  scale_fill_manual(values = custom_colors)
 
 
 
