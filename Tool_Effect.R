@@ -156,11 +156,6 @@ left_join(A, B, by = 'ID_id_num') %>%
 
 # Model -------------------------------------------------------
 
-
-db %>% 
-  group_by(Trial_tool, Trial_tool_direction) %>% 
-  summarise(n())
-
 Priors = prior(normal(0, 4), class = b)
 mod = brm(AdaptiveGrasp ~ Trial_tool*AgeSt*Trial_tool_direction + 
              (1 + AgeSt | ID_id_num),
