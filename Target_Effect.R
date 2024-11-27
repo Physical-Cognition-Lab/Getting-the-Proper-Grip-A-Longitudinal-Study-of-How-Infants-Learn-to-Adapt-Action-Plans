@@ -82,10 +82,6 @@ db = df %>%
 
 # Bayesian model ----------------------------------------------------------
 
-db %>% 
-  group_by(Trial_tool, Trial_tool_direction) %>% 
-  summarise(n())
-
 Priors = prior(normal(0, 4), class = b)
 
 mod = brm(AdaptiveGrasp ~ Trial_tool_direction*Trial_tool*Trial_target*AgeSt + (1 + AgeSt | ID_id_num),
