@@ -10,7 +10,7 @@ library(emmeans)
 # Setting and paths -------------------------------------------------------
 
 # Uncomment and set your working directory if needed
-setwd("path/to/your/directory")
+# setwd("path/to/your/directory")
 
 # Load data
 db  =  read.csv('.\\Data\\PlanningInfants_Session_Data.csv')
@@ -73,6 +73,7 @@ df = df %>% filter(
                                labels = c( 'Other','Self')))
 
 # Standardizagre
+df$Age = df$Age/7
 df$AgeSt = standardize(df$Age)
 
 db = df %>%
@@ -88,7 +89,7 @@ mod = brm(AdaptiveGrasp ~ Trial_tool_direction*Trial_tool*Trial_target*AgeSt + (
           data = db, family = bernoulli(), prior = Priors,
           chains = 4, iter = 8000, warmup = 6000, cores = 4,
           control = list(adapt_delta = 0.99, max_treedepth = 15),
-          file = '.\\Results\\Models\\SelfOther')
+          file = '.\\Results\\Models\\SelfOtherWeeks')
 
 tool_p = parameters(mod, ci =.89)
 tool_c = estimate_contrasts(mod, contrast = c('Trial_target','Trial_tool'), ci =.89)
@@ -175,9 +176,9 @@ Main_Spoon <- Pred_tool %>%
   theme(legend.position = 'bottom',
         plot.title = element_text(hjust = 0.5),
         legend.key.width = unit(3, "cm")) +  # Increase legend key width for better visibility
-  labs(x = 'Age (days)', y = 'Estimated probability', fill = "", color = "", linetype = "", title = 'Spoon') +
+  labs(x = 'Age (weeks)', y = 'Estimated probability', fill = "", color = "", linetype = "", title = 'Spoon') +
   scale_y_continuous(breaks = seq(0.2, 1, 0.2), labels = c('0.2', '0.4', '0.6', '0.8', 'Adaptive\nGrasp')) +
-  coord_cartesian(ylim = c(0.2, 1.05), xlim = c(277, 530)) +
+  coord_cartesian(ylim = c(0.2, 1.05), xlim = c(38, 76)) +
   theme(legend.position = 'bottom',
         axis.text.y = element_blank(),
         axis.title.y = element_blank(),
@@ -199,9 +200,9 @@ Main_Brush = Pred_tool %>%
   scale_linetype_manual(values = c("Self" = "solid", "Other" = "dashed")) +
   
   theme_minimal(base_size = 35) + 
-  labs(x = 'Age (days)', y = 'Estimated probability', fill = "", color = "", linetype = "", title = 'Brush') +
+  labs(x = 'Age (weeks)', y = 'Estimated probability', fill = "", color = "", linetype = "", title = 'Brush') +
   scale_y_continuous(breaks = seq(0.2, 1, 0.2), labels = c('0.2', '0.4', '0.6', '0.8', 'Adaptive\nGrasp')) +
-  coord_cartesian(ylim = c(0.2, 1.05), xlim = c(277, 530)) +
+  coord_cartesian(ylim = c(0.2, 1.05), xlim = c(38, 76)) +
   theme(legend.position = 'bottom',
         axis.text.y = element_blank(),
         axis.title.y = element_blank(),
@@ -236,13 +237,13 @@ Self_Spoon = Pre_Subject_tool %>%
   geom_ribbon(aes(ymin = lower.HPD, ymax = upper.HPD), color = 'transparent', alpha = 0.2)+
   
   geom_hline(yintercept = 0.5, linetype = 'dashed')+
-  labs(x = 'Age(days)', y = 'Estimated probability')+
+  labs(x = 'Age(weeks)', y = 'Estimated probability')+
   theme_minimal(base_size = 40)+ 
   theme(legend.position = 'none')+
   scale_y_continuous(breaks = seq(0.2, 1, 0.2), labels = c('0.2','0.4','0.6','0.8','Adaptive\nGrasp'))+
   scale_color_manual(values  = SS )+
   scale_fill_manual(values  = SS)+
-  coord_cartesian(ylim = c(0.2, 1.05), xlim = c(277,530))
+  coord_cartesian(ylim = c(0.2, 1.05), xlim = c(38, 76))
 
 
 SO = colorRampPalette(c("#ADA8B6", "#5a4e65"))(9)
@@ -253,14 +254,14 @@ Other_Spoon = Pre_Subject_tool %>%
   geom_ribbon(aes(ymin = lower.HPD, ymax = upper.HPD), color = 'transparent', alpha = 0.2)+
   
   geom_hline(yintercept = 0.5, linetype = 'dashed')+
-  labs(x = 'Age(days)', y = '')+
+  labs(x = 'Age(weeks)', y = '')+
   theme_minimal(base_size = 40)+ 
   theme(legend.position = 'none',
         axis.text.y = element_blank())+
   scale_y_continuous(breaks = seq(0.2, 1, 0.2), labels = c('0.2','0.4','0.6','0.8','Adaptive\nGrasp'))+
   scale_color_manual(values  = SO )+
   scale_fill_manual(values  = SO)+
-  coord_cartesian(ylim = c(0.2, 1.05), xlim = c(277,530))
+  coord_cartesian(ylim = c(0.2, 1.05), xlim = c(38, 76))
 
 
 
@@ -272,14 +273,14 @@ Self_Brush = Pre_Subject_tool %>%
   geom_ribbon(aes(ymin = lower.HPD, ymax = upper.HPD), color = 'transparent', alpha = 0.2)+
   
   geom_hline(yintercept = 0.5, linetype = 'dashed')+
-  labs(x = 'Age(days)', y = '')+
+  labs(x = 'Age(weeks)', y = '')+
   theme_minimal(base_size = 40)+ 
   theme(legend.position = 'none',
         axis.text.y = element_blank())+
   scale_y_continuous(breaks = seq(0.2, 1, 0.2), labels = c('0.2','0.4','0.6','0.8','Adaptive\nGrasp'))+
   scale_color_manual(values  = BS )+
   scale_fill_manual(values  = BS)+
-  coord_cartesian(ylim = c(0.2, 1.05), xlim = c(277,530))
+  coord_cartesian(ylim = c(0.2, 1.05), xlim = c(38, 76))
 
 
 BO = colorRampPalette(c("#ADA8B6", "#7e9980"))(9)
@@ -290,14 +291,14 @@ Other_Brush = Pre_Subject_tool %>%
   geom_ribbon(aes(ymin = lower.HPD, ymax = upper.HPD), color = 'transparent', alpha = 0.2)+
   
   geom_hline(yintercept = 0.5, linetype = 'dashed')+
-  labs(x = 'Age(days)', y = '')+
+  labs(x = 'Age(weeks)', y = '')+
   theme_minimal(base_size = 40)+ 
   theme(legend.position = 'none',
         axis.text.y = element_blank())+
   scale_y_continuous(breaks = seq(0.2, 1, 0.2), labels = c('0.2','0.4','0.6','0.8','Adaptive\nGrasp'))+
   scale_color_manual(values  = BO )+
   scale_fill_manual(values  = BO)+
-  coord_cartesian(ylim = c(0.2, 1.05), xlim = c(277,530))
+  coord_cartesian(ylim = c(0.2, 1.05), xlim = c(38, 76))
 
 
 
