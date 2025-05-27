@@ -105,11 +105,18 @@
 <line x1='251.00' y1='820.86' x2='1154.33' y2='820.86' style='stroke-width: 1.07; stroke-dasharray: 5.69,5.69; stroke-linecap: butt;' />
 </g>
 <g clip-path='url(#cpMC4wMHwyMTYwLjAwfDAuMDB8MjE2MC4wMA==)'>
+<text x='235.31' y='1182.92' text-anchor='end' style='font-size: 28.00px;fill: #4D4D4D; font-family: "Arial";' textLength='38.92px' lengthAdjust='spacingAndGlyphs'>0.2</text>
+<text x='235.31' y='948.23' text-anchor='end' style='font-size: 28.00px;fill: #4D4D4D; font-family: "Arial";' textLength='38.92px' lengthAdjust='spacingAndGlyphs'>0.4</text>
+<text x='235.31' y='713.53' text-anchor='end' style='font-size: 28.00px;fill: #4D4D4D; font-family: "Arial";' textLength='38.92px' lengthAdjust='spacingAndGlyphs'>0.6</text>
+<text x='235.31' y='478.84' text-anchor='end' style='font-size: 28.00px;fill: #4D4D4D; font-family: "Arial";' textLength='38.92px' lengthAdjust='spacingAndGlyphs'>0.8</text>
+<text x='235.31' y='229.02' text-anchor='end' style='font-size: 28.00px;fill: #4D4D4D; font-family: "Arial";' textLength='108.97px' lengthAdjust='spacingAndGlyphs'>Adaptive</text>
+<text x='235.31' y='259.26' text-anchor='end' style='font-size: 28.00px;fill: #4D4D4D; font-family: "Arial";' textLength='76.26px' lengthAdjust='spacingAndGlyphs'>Grasp</text>
 <text x='335.29' y='1258.51' text-anchor='middle' style='font-size: 28.00px;fill: #4D4D4D; font-family: "Arial";' textLength='31.15px' lengthAdjust='spacingAndGlyphs'>40</text>
 <text x='551.39' y='1258.51' text-anchor='middle' style='font-size: 28.00px;fill: #4D4D4D; font-family: "Arial";' textLength='31.15px' lengthAdjust='spacingAndGlyphs'>50</text>
 <text x='767.50' y='1258.51' text-anchor='middle' style='font-size: 28.00px;fill: #4D4D4D; font-family: "Arial";' textLength='31.15px' lengthAdjust='spacingAndGlyphs'>60</text>
 <text x='983.61' y='1258.51' text-anchor='middle' style='font-size: 28.00px;fill: #4D4D4D; font-family: "Arial";' textLength='31.15px' lengthAdjust='spacingAndGlyphs'>70</text>
 <text x='702.67' y='1298.18' text-anchor='middle' style='font-size: 35.00px; font-family: "Arial";' textLength='194.51px' lengthAdjust='spacingAndGlyphs'>Age (weeks)</text>
+<text transform='translate(86.57,674.18) rotate(-90)' text-anchor='middle' style='font-size: 35.00px; font-family: "Arial";' textLength='324.86px' lengthAdjust='spacingAndGlyphs'>Estimated probability</text>
 <line x1='549.56' y1='1374.06' x2='617.59' y2='1374.06' style='stroke-width: 4.69; stroke: #5A4E65; stroke-dasharray: 25.04,25.04; stroke-linecap: butt;' />
 <rect x='541.77' y='1361.80' width='83.62' height='24.52' style='stroke-width: 1.07; stroke: none; stroke-dasharray: 5.69,5.69; stroke-linecap: butt; stroke-linejoin: miter; fill: #5A4E65; fill-opacity: 0.40;' />
 <line x1='739.50' y1='1374.06' x2='807.53' y2='1374.06' style='stroke-width: 4.69; stroke: #440154; stroke-linecap: butt;' />

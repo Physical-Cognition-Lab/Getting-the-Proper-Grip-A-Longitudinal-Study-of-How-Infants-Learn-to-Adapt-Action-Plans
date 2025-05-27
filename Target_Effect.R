@@ -180,8 +180,6 @@ Main_Spoon <- Pred_tool %>%
   scale_y_continuous(breaks = seq(0.2, 1, 0.2), labels = c('0.2', '0.4', '0.6', '0.8', 'Adaptive\nGrasp')) +
   coord_cartesian(ylim = c(0.2, 1.05), xlim = c(38, 76)) +
   theme(legend.position = 'bottom',
-        axis.text.y = element_blank(),
-        axis.title.y = element_blank(),
         plot.title = element_text(hjust = 0.5),
         legend.key.width = unit(3, "cm"))
 
