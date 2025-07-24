@@ -592,8 +592,7 @@ Prediction_plot = MeansDraws %>%
   scale_y_continuous(
     breaks = seq(0.4, 1, 0.1),
     labels = c('0.4', '0.5', '0.6', '0.7', '0.8', '0.9', 'Adaptive\nGrasp')
-  )
-
+  )  + geom_vline(xintercept = 67.5, linetype = 'dashed', color = 'darkred', lwd = 1.2)
 
 Prediction_plot
 ggsave(

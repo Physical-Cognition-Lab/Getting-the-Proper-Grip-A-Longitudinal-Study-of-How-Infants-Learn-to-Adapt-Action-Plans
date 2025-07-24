@@ -101,6 +101,7 @@ tool_p %>%
   mutate(Zero_in_CI = ifelse(CI_low < 0 & CI_high > 0, NA, TRUE))
 
 estimate_contrasts(mod, contrast = 'Trial_tool', by = 'Trial_tool_direction' ,ci = .89)
+estimate_contrasts(mod, contrast = c('Trial_tool', 'Trial_tool_direction') ,ci = .89)
 
 
 Est_mod2 = estimate_means(mod, by= c('Trial_tool', 'Trial_tool_direction'), ci =.89)
@@ -178,12 +179,7 @@ Main_Spoon <- Pred_tool %>%
         legend.key.width = unit(3, "cm")) +  # Increase legend key width for better visibility
   labs(x = 'Age (weeks)', y = 'Estimated probability', fill = "", color = "", linetype = "", title = 'Spoon') +
   scale_y_continuous(breaks = seq(0.2, 1, 0.2), labels = c('0.2', '0.4', '0.6', '0.8', 'Adaptive\nGrasp')) +
-  coord_cartesian(ylim = c(0.2, 1.05), xlim = c(38, 76)) +
-  theme(legend.position = 'bottom',
-        axis.text.y = element_blank(),
-        axis.title.y = element_blank(),
-        plot.title = element_text(hjust = 0.5),
-        legend.key.width = unit(3, "cm"))
+  coord_cartesian(ylim = c(0.2, 1.05), xlim = c(38, 76))
 
 Main_Spoon
 
