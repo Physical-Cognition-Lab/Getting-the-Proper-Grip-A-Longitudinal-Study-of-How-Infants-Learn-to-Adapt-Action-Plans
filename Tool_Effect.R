@@ -10,7 +10,6 @@ library(lme4)
 library(lmerTest)
 library(emmeans)
 
-
 # Setting and paths -------------------------------------------------------
 
 options(emmeans.backend = "emmeans")
@@ -21,6 +20,12 @@ options(emmeans.backend = "emmeans")
 # Load data
 db = read.csv('.\\Data\\PlanningInfants_Session_Data.csv')
 
+my_colors = c(
+  Spoon = "#440154",
+  Hammer = "#31688e",
+  Brush = "#35b779",
+  Magnet = "#f1a340"
+)
 
 # Fix data ---------------------------------------------------------------
 
@@ -37,9 +42,9 @@ db[db$ID_id_num == 2 & db$ID_tdate == S8, ]$ID_session_num = 9
 db[db$ID_id_num == 2 & db$ID_tdate == S9, ]$ID_session_num = 6
 
 
-df = db %>%
+df = db |>
   # Arrange the data by 'ID_id_num' and 'id_session_num'
-  arrange(ID_id_num, ID_session_num) %>%
+  arrange(ID_id_num, ID_session_num) |>
 
   # Create new variables or modify existing ones
   mutate(
@@ -68,22 +73,23 @@ df = db %>%
 
       .default = 0
     )
-  ) %>%
+  ) |>
 
   # Group the data by 'ID_id_num'
-  group_by(ID_id_num) %>%
+  group_by(ID_id_num) |>
   # Create a new variable 'session' that represents the session number for each subject
-  mutate(session = match(ID_session_num, unique(ID_session_num))) %>%
+  mutate(session = match(ID_session_num, unique(ID_session_num))) |>
   ungroup()
 
 df$Age = df$Age/7
 df$AgeSt = standardize(df$Age)
 
-db = df %>%
-  filter(Trial_target != 'e') %>%
+db = df |>
+  filter(Trial_target != 'e') |>
   mutate(
     Trial_tool_direction = factor(Trial_tool_direction, levels = c("l", "r"))
   )
+
 
 
 # Table information ------------------------------------------------------
@@ -192,6 +198,7 @@ left_join(A, B, by = 'ID_id_num') %>%
   gtsave(".\\Results\\Tables\\SessionCounter.docx")
 
 
+
 # Model -------------------------------------------------------
 
 Priors = prior(normal(0, 4), class = b)
@@ -214,7 +221,6 @@ parameters::parameters(mod, ci = .89)
 c = estimate_contrasts(mod, contrast = 'Trial_tool', ci = 0.89, backend = "emmeans")
 s = estimate_slopes(mod, trend = 'AgeSt', by = 'Trial_tool', ci = 0.89,backend = 'emmeans')
 
-
 ##################### Effect of non-habitual and habitual #####################
 
 estimate_contrasts(
@@ -231,13 +237,6 @@ Est_mod$Trial_tool_direction = factor(
   labels = c("Handle-left", "Handle-right")
 )
 
-custom_colors <- c(
-  "Hammer" = "#31688e",
-  "Brush" = "#35b779",
-  "Magnet" = "#fde725",
-  "Spoon" = "#440154"
-)
-
 
 MDir1 = Est_mod %>%
   ggplot(aes(x = Trial_tool_direction, y = Probability, color = Trial_tool)) +
@@ -248,9 +247,9 @@ MDir1 = Est_mod %>%
     width = .5,
     lwd = 1.6
   ) +
-  theme_bw(base_size = 20) +
+  theme_bw(base_size = 30) +
   labs(x = '', color = 'Tool', y = 'Estimated probability') +
-  scale_color_manual(values = custom_colors)
+  scale_color_manual(values = my_colors)
 MDir1
 saveRDS(MDir1, '.\\Results\\Plots\\ToolDirection.rds')
 ggsave(
@@ -261,55 +260,53 @@ ggsave(
 )
 
 
-# Plot Main effect --------------------------------------------------------
+
+# Plot of data plus raw data ---------------------------------------------
 
 # Calculate marginal means
-Pred <- emmeans(mod, ~ Trial_tool * AgeSt, at = list(AgeSt = seq(-2, 2, .5)))
+Pred = emmeans(mod, ~ Trial_tool * AgeSt, at = list(AgeSt = seq(min(df$AgeSt), max(df$AgeSt), .5)))
 
 Pred = as.data.frame(summary(Pred, type = "response", level = 0.89))
 Pred$Age = unstandardise(Pred$AgeSt, reference = df$Age)
 
 
-my_colors <- c(
-  Spoon = "#440154",
-  Hammer = "#31688e",
-  Brush = "#35b779",
-  Magnet = "#fde725"
-)
-Main = ggplot(
-  Pred,
-  aes(x = Age, y = response, color = Trial_tool, fill = Trial_tool)
-) +
+Main = ggplot( Pred, aes(x = Age, y = response, color = Trial_tool, fill = Trial_tool)) +
+
+  # Raw data
+  geom_hline(yintercept = c(0,1),  lwd = 1.3, color= 'darkgray', alpha = 0.5) +
+  geom_point(data= db, aes(y= ifelse(AdaptiveGrasp == 1, AdaptiveGrasp+0.1, AdaptiveGrasp-0.1)), size = 2, position = position_jitter(height = 0.05, width = 1))+
+
+  # Actual data
   geom_line(lwd = 2) +
-  geom_ribbon(
-    aes(ymin = lower.HPD, ymax = upper.HPD),
-    alpha = 0.4,
-    color = 'transparent'
-  ) +
+  geom_ribbon( aes(ymin = lower.HPD, ymax = upper.HPD), alpha = 0.4,color = 'transparent' ) +
   geom_hline(yintercept = 0.5, linetype = 'dashed', lwd = 1.3) +
+
+  # Colors
   scale_color_manual(values = my_colors) +
   scale_fill_manual(values = my_colors) +
 
-  theme_minimal(base_size = 35) +
+  # Theme
+  theme_classic(base_size = 50) +
   theme(legend.position = 'bottom') +
   labs(x = 'Age(weeks)', y = 'Estimated probability', fill = "", color = "") +
   scale_y_continuous(
-    breaks = seq(0.2, 1, 0.2),
-    labels = c('0.2', '0.4', '0.6', '0.8', 'Adaptive\nGrasp')
-  ) +
-  guides(colour = "none", point = 'none') +
-  coord_cartesian(ylim = c(0.2, 1.05), xlim = c(38, 76))
-
+    breaks = seq(0, 1, 0.2),
+    labels = c('Non adaptive\nGrasp', '0.2', '0.4', '0.6', '0.8', 'Adaptive\nGrasp')
+  ) + 
+  guides( fill = guide_legend( override.aes = list(alpha    = 1 )))
+    
 Main
+
+
 
 
 # Plot individual level ---------------------------------------------------
 
 # Calculate marginal means
-Pred_Subject <- emmeans(
+Pred_Subject = emmeans(
   mod,
   ~ Trial_tool * AgeSt | ID_id_num,
-  at = list(AgeSt = seq(-2, 2, .5)),
+  at = list(AgeSt = seq(min(df$AgeSt), max(df$AgeSt), .5)),
   re_formula = NULL
 )
 
@@ -323,103 +320,127 @@ Pred_Subject$Age = unstandardise(Pred_Subject$AgeSt, reference = df$Age)
 
 ## Spoon
 S = colorRampPalette(c("#f2a9ff", "#440154"))(9)
-SPOON = Pred_Subject %>%
-  filter(Trial_tool == 'Spoon') %>%
+SPOON = Pred_Subject |>
+  filter(Trial_tool == 'Spoon') |>
   ggplot(aes(x = Age, y = response, color = ID_id_num, fill = ID_id_num)) +
+
+  # Raw data
+  geom_hline(yintercept = c(0,1),  lwd = 1.3, color= 'darkgray', alpha = 0.5) +
+  geom_point(data= filter(db, Trial_tool == 'Spoon'), aes(y= ifelse(AdaptiveGrasp == 1, AdaptiveGrasp+0.1, AdaptiveGrasp-0.1)), size = 2, position = position_jitter(height = 0.05, width = 1))+
+
+
   geom_line(lwd = 1.9) +
   geom_ribbon(
     aes(ymin = lower.HPD, ymax = upper.HPD),
     alpha = 0.20,
     color = 'transparent'
   ) +
+  
   geom_hline(yintercept = 0.5, linetype = 'dashed', lwd = 1.3) +
 
   labs(x = '', y = 'Estimated probability') +
-  theme_minimal(base_size = 35) +
+  theme_classic(base_size = 40) +
   theme(legend.position = 'none', axis.text.x = element_blank()) +
   scale_y_continuous(
-    breaks = seq(0.2, 1, 0.2),
-    labels = c('0.2', '0.4', '0.6', '0.8', 'Adaptive\nGrasp')
-  ) +
+    breaks = seq(0, 1, 0.2),
+    labels = c('Non adaptive\nGrasp', '0.2', '0.4', '0.6', '0.8', 'Adaptive\nGrasp')
+  ) + 
   scale_color_manual(values = S) +
-  scale_fill_manual(values = S) +
-  coord_cartesian(ylim = c(0.2, 1.05), xlim = c(38, 76))
+  scale_fill_manual(values = S) 
 
 ## Hammer
 H = colorRampPalette(c("#31688e", "#3a4856"))(9)
-HAMMER = Pred_Subject %>%
-  filter(Trial_tool == 'Hammer') %>%
+HAMMER = Pred_Subject |>
+  filter(Trial_tool == 'Hammer') |>
   ggplot(aes(x = Age, y = response, color = ID_id_num, fill = ID_id_num)) +
+
+  # Raw data
+  geom_hline(yintercept = c(0,1),  lwd = 1.3, color= 'darkgray', alpha = 0.5) +
+  geom_point(data= filter(db, Trial_tool == 'Hammer'), aes(y= ifelse(AdaptiveGrasp == 1, AdaptiveGrasp+0.1, AdaptiveGrasp-0.1)), size = 2, position = position_jitter(height = 0.05, width = 1))+
+
+
   geom_line(lwd = 1.9) +
   geom_ribbon(
     aes(ymin = lower.HPD, ymax = upper.HPD),
     alpha = 0.20,
     color = 'transparent'
   ) +
+  
   geom_hline(yintercept = 0.5, linetype = 'dashed', lwd = 1.3) +
 
   labs(x = '', y = '') +
-  theme_minimal(base_size = 35) +
+  theme_classic(base_size = 40) +
   theme(
     legend.position = 'none',
     axis.text.x = element_blank(),
     axis.text.y = element_blank()
   ) +
   scale_y_continuous(
-    breaks = seq(0.2, 1, 0.2),
-    labels = c('0.2', '0.4', '0.6', '0.8', 'Adaptive\nGrasp')
-  ) +
+    breaks = seq(0, 1, 0.2),
+    labels = c('Non adaptive\nGrasp', '0.2', '0.4', '0.6', '0.8', 'Adaptive\nGrasp')
+  ) + 
   scale_color_manual(values = H) +
-  scale_fill_manual(values = H) +
-  coord_cartesian(ylim = c(0.2, 1.05), xlim = c(38, 76))
+  scale_fill_manual(values = H) 
 
 ## Brush
 B = colorRampPalette(c("#35b779", "#455335"))(9)
-BRUSH = Pred_Subject %>%
-  filter(Trial_tool == 'Brush') %>%
+BRUSH = Pred_Subject |>
+  filter(Trial_tool == 'Brush') |>
   ggplot(aes(x = Age, y = response, color = ID_id_num, fill = ID_id_num)) +
+
+  # Raw data
+  geom_hline(yintercept = c(0,1),  lwd = 1.3, color= 'darkgray', alpha = 0.5) +
+  geom_point(data= filter(db, Trial_tool == 'Brush'), aes(y= ifelse(AdaptiveGrasp == 1, AdaptiveGrasp+0.1, AdaptiveGrasp-0.1)), size = 2, position = position_jitter(height = 0.05, width = 1))+
+
+
   geom_line(lwd = 1.9) +
   geom_ribbon(
     aes(ymin = lower.HPD, ymax = upper.HPD),
     alpha = 0.20,
     color = 'transparent'
   ) +
+  
   geom_hline(yintercept = 0.5, linetype = 'dashed', lwd = 1.3) +
 
   labs(x = 'Age(weeks)', y = 'Estimated probability') +
-  theme_minimal(base_size = 35) +
+  theme_classic(base_size = 40) +
   theme(legend.position = 'none') +
   scale_y_continuous(
-    breaks = seq(0.2, 1, 0.2),
-    labels = c('0.2', '0.4', '0.6', '0.8', 'Adaptive\nGrasp')
-  ) +
+    breaks = seq(0, 1, 0.2),
+    labels = c('Non adaptive\nGrasp', '0.2', '0.4', '0.6', '0.8', 'Adaptive\nGrasp')
+  ) + 
   scale_color_manual(values = B) +
-  scale_fill_manual(values = B) +
-  coord_cartesian(ylim = c(0.2, 1.05), xlim = c(38, 76))
+  scale_fill_manual(values = B) 
 
 ## Magnet
 M = colorRampPalette(c("#fde725", "#ab9d68"))(9)
-MAGNET = Pred_Subject %>%
-  filter(Trial_tool == 'Magnet') %>%
+MAGNET = Pred_Subject |>
+  filter(Trial_tool == 'Magnet') |>
   ggplot(aes(x = Age, y = response, color = ID_id_num, fill = ID_id_num)) +
+
+  # Raw data
+  geom_hline(yintercept = c(0,1),  lwd = 1.3, color= 'darkgray', alpha = 0.5) +
+  geom_point(data= filter(db, Trial_tool == 'Magnet'), aes(y= ifelse(AdaptiveGrasp == 1, AdaptiveGrasp+0.1, AdaptiveGrasp-0.1)), size = 2, position = position_jitter(height = 0.05, width = 1))+
+
+
   geom_line(lwd = 1.9) +
   geom_ribbon(
     aes(ymin = lower.HPD, ymax = upper.HPD),
     alpha = 0.20,
     color = 'transparent'
   ) +
+  
   geom_hline(yintercept = 0.5, linetype = 'dashed', lwd = 1.3) +
 
   labs(x = 'Age(weeks)', y = '') +
-  theme_minimal(base_size = 35) +
+  theme_classic(base_size = 40) +
   theme(legend.position = 'none', axis.text.y = element_blank()) +
   scale_y_continuous(
-    breaks = seq(0.2, 1, 0.2),
-    labels = c('0.2', '0.4', '0.6', '0.8', 'Adaptive\nGrasp')
-  ) +
+    breaks = seq(0, 1, 0.2),
+    labels = c('Non adaptive\nGrasp', '0.2', '0.4', '0.6', '0.8', 'Adaptive\nGrasp')
+  )+
   scale_color_manual(values = M) +
-  scale_fill_manual(values = M) +
-  coord_cartesian(ylim = c(0.2, 1.05), xlim = c(38, 76))
+  scale_fill_manual(values = M) 
 
 
 (Main / (SPOON + HAMMER) / (BRUSH + MAGNET)) +
@@ -427,7 +448,37 @@ MAGNET = Pred_Subject %>%
   plot_annotation(tag_levels = 'A') &
   theme(plot.tag = element_text(size = 50))
 
-ggsave('.\\Results\\Plots\\Tools.svg', height = 35, width = 25, dpi = 300)
+
+ggsave('.\\Results\\Plots\\ToolsRawData.svg', height = 35, width = 25, dpi = 300)
+
+
+
+# PlotBySubjectToShowIndividualPatterns ----------------------------------
+
+Pred_Subject |> 
+  ggplot(aes(x = Age, y = response, color = Trial_tool, fill = Trial_tool)) +
+  geom_line(lwd = 1.9) +
+  geom_ribbon(
+    aes(ymin = lower.HPD, ymax = upper.HPD),
+    alpha = 0.20,
+    color = 'transparent'
+  ) +
+  geom_hline(yintercept = 0.5, linetype = 'dashed', lwd = 1.3) +
+  labs(x = 'Age(weeks)', y = 'Estimated probability') +
+  theme_classic(base_size = 40) +
+  theme(legend.position = 'bottom') +
+  scale_y_continuous(
+    breaks = seq(0.2, 1, 0.2),
+    labels = c('0.2', '0.4', '0.6', '0.8', 'Adaptive\nGrasp')
+  )+
+  facet_wrap(~ID_id_num,
+        labeller = labeller(
+        ID_id_num = function(x) paste0("Sub: ", x)
+      ))+
+  scale_color_manual(values = my_colors) +
+  scale_fill_manual(values = my_colors)
+
+ggsave('.\\Results\\Plots\\SubjectsResPlot.svg', height = 14, width = 21, dpi = 300)
 
 
 # Plot individual slopes --------------------------------------------------
@@ -490,7 +541,7 @@ g <- ggplot_gtable(ggplot_build(plot_sl))
 stripr <- which(grepl('strip-', g$layout$name)) # Works for both strip-r and strip-t (facet labels)
 
 # Define custom colors for each facet
-fills <- c("#440154", "#31688e", "#35b779", "#fde725") # Customize colors as needed
+fills <- c("#440154", "#31688e", "#35b779", "#f1a340") # Customize colors as needed
 
 # Loop through the facet strips and apply the background colors
 k <- 1
@@ -500,11 +551,7 @@ for (i in stripr) {
   k <- k + 1
 }
 
-# Draw the plot and save it
-svg(".\\Results\\Plots\\IndividualSlopes.svg", height = 10, width = 16) # Open PNG device
 grid::grid.draw(g) # Draw the plot
-dev.off() # Close the device and save the file
-
 
 #### Giant Plot
 (Main / (SPOON + HAMMER) / (BRUSH + MAGNET) / g) +
@@ -512,7 +559,10 @@ dev.off() # Close the device and save the file
   plot_annotation(tag_levels = 'A') &
   theme(plot.tag = element_text(size = 50))
 
-ggsave('.\\Results\\Plots\\ToolsTotal.svg', height = 35, width = 25, dpi = 300)
+ggsave('.\\Results\\Plots\\ToolsTotalRaw.svg', height = 35, width = 25, dpi = 300)
+
+
+
 
 
 # Prediction of spoon over age ------------------------------------------------------------
@@ -592,11 +642,11 @@ Prediction_plot = MeansDraws %>%
   scale_y_continuous(
     breaks = seq(0.4, 1, 0.1),
     labels = c('0.4', '0.5', '0.6', '0.7', '0.8', '0.9', 'Adaptive\nGrasp')
-  )  + geom_vline(xintercept = 67.5, linetype = 'dashed', color = 'darkred', lwd = 1.2)
+  ) 
 
 Prediction_plot
 ggsave(
-  '.\\Results\\Plots\\SpoonPrediction.svg',
+  '.\\Results\\Plots\\SpoonPredictionRaw.svg',
   width = 20,
   height = 12,
   dpi = 300
@@ -746,10 +796,10 @@ M = ggplot(Magnet, aes(x = x, y = y)) +
     alpha = 1
   ) +
 
-  geom_area(data = MagnetP, fill = "#fde725", alpha = 0.3) + # Overlay area
+  geom_area(data = MagnetP, fill = "#f1a340", alpha = 0.3) + # Overlay area
   geom_area(
     data = MagnetP %>% filter(x >= MagnetPCi$CI_low & x <= MagnetPCi$CI_high),
-    fill = "#fde725",
+    fill = "#f1a340",
     alpha = 1
   ) +
 
@@ -806,7 +856,7 @@ combined_plot <- (S | H) /
 
 combined_plot
 ggsave(
-  '.\\Results\\Plots\\SimulationCoef.svg',
+  '.\\Results\\Plots\\SimulationCoefRaw.svg',
   width = 20,
   height = 16,
   dpi = 300
@@ -820,8 +870,213 @@ Prediction_plot /
   plot_annotation(tag_levels = list(c('A', 'B', '', '')))
 
 ggsave(
-  '.\\Results\\Plots\\CombinationSupplementary.svg',
+  '.\\Results\\Plots\\CombinationSupplementaryRaw.svg',
   width = 18,
   height = 17,
   dpi = 300
 )
+
+
+
+# After review 1 -----------------------------------------------------------
+
+## Plot Raw data does not make sense-------------------------------------------------------
+db |> 
+  # Extract percetage of adaptive grasp
+  group_by(ID_id_num,Trial_tool, Age) |> 
+  summarize(PercAdaptive = sum(AdaptiveGrasp) / n() ) |> 
+  ungroup() |>
+  
+  # Actual plot
+  ggplot( aes( x = Age, y=PercAdaptive,  color= Trial_tool ))+
+  
+  # Raw data
+  geom_hline(yintercept = c(0,1),  lwd = 1.3, color= 'darkgray', alpha = 0.5) +
+  geom_point(data= db, aes(y= ifelse(AdaptiveGrasp == 1, AdaptiveGrasp+0.1, AdaptiveGrasp-0.1)), size = 2, position = position_jitter(height = 0.05, width = 1))+
+
+
+  # Actual data
+  geom_line(lwd = 1.1) +
+  geom_hline(yintercept = 0.5, linetype = 'dashed', lwd = 1.3) +
+
+  facet_wrap(~ID_id_num,
+      labeller = labeller(
+        ID_id_num = function(x) paste0("Sub: ", x)
+      ))+
+
+  # Theme
+  theme_classic(base_size = 25) +
+  labs(x = '', color = 'Tool', y = '% Adaptive grasp') +
+  scale_color_manual(values = my_colors) +
+  scale_fill_manual(values = my_colors) +
+    scale_y_continuous(
+    breaks = seq(0.2, 1, 0.2),
+    labels = c('0.2', '0.4', '0.6', '0.8', 'Adaptive\nGrasp')
+  )
+ggsave('.\\Results\\Plots\\RawDataWrong.svg', height = 14, width = 18, dpi = 300)
+
+
+
+## Correlation between session number and the slopes ----------------------
+
+
+individual_effects = ranef(mod)
+
+# Get slope deviations
+slope_deviations = individual_effects$ID_id_num[, "Estimate", "AgeSt"]
+participant_ids = as.numeric(rownames(individual_effects$ID_id_num))
+
+slope_data = data.frame(
+  ID_id_num = factor(participant_ids),
+  slope_deviation = slope_deviations
+)
+
+
+trials_per_participant = db |>
+  group_by(ID_id_num) |>
+  summarise(
+    n_sessions = n_distinct(AgeSt)
+  )
+
+# Combine with slope data
+analysis_data = slope_data |>
+  left_join(trials_per_participant, by = "ID_id_num")
+
+# Test both correlations
+cor_sessions = cor_test(data= analysis_data, 'n_sessions', 'slope_deviation')
+cor_sessions
+
+
+## Session plots ----------------------------------------------------------
+
+df |> 
+  group_by(ID_id_num, Age) |>
+  summarise(Session = n()) |> 
+  ggplot( aes(x = Age, y = ID_id_num, color=ID_id_num)) +
+  geom_point(size = 4) +
+  scale_color_brewer(palette = "Paired") +
+  theme_classic(base_size = 35) +
+  theme(legend.position = 'none') +
+  labs(x = 'Age(weeks)', y = 'Subject Id', title= 'Sessions per subject')
+
+ggsave('.\\Results\\Plots\\SessionSpreadPlot.svg', height = 10, width = 12, dpi = 300)
+
+
+## Session x direction plots ----------------------------------------------------------
+SesXDir = db |> 
+  group_by(ID_id_num, Age, Trial_tool, Trial_tool_direction) |>
+  summarize(Session = n()) |>
+  ungroup() |> 
+  group_by(ID_id_num, Trial_tool, Trial_tool_direction) |>
+  summarize(meanSession = mean(Session)) |> 
+  mutate(ID_id_num = as.numeric(ID_id_num)*4,
+        Trial_tool_direction = recode_factor(
+      Trial_tool_direction,
+      l = "Left",
+      r = "Right"
+    ))
+
+SesXDirPlot = SesXDir |> 
+  ggplot( aes(x = as.numeric(ID_id_num)*1, y = meanSession, color=Trial_tool, shape=factor(Trial_tool_direction))) +
+  geom_point(size = 4,       position = position_dodge2(
+        width    = 3.3,   # ← controls distance between colour‑groups
+        padding  = 1.2,   # ← controls distance between shapes *within* each colour
+        preserve = "single"
+      )) +
+  labs(x = 'Subject Id', y = 'Average sessions number', shape= 'Direction', color= 'Tool')+
+  
+  scale_y_continuous(breaks = seq(2, 18, 2))+
+  scale_x_continuous(breaks = seq(1, 9, 1)*4, labels = seq(1, 9, 1))+
+  theme_minimal(base_size = 35)+
+  theme(
+    panel.grid.major.x = element_line(color = "grey80"),
+    panel.grid.major.y = element_line(color = "grey80"),
+    panel.grid.minor   = element_blank()
+  )+
+  scale_color_manual(values = my_colors) 
+saveRDS(SesXDirPlot, '.\\Results\\Plots\\SessionSpreadPlotToolDirection.rds')
+ggsave('.\\Results\\Plots\\SessionSpreadPlotToolDirection.svg',SesXDirPlot,  height = 10, width = 20, dpi = 300)
+
+
+
+#### Run the model to check distribution
+
+Priors = prior(normal(0, 4), class = b)
+mod2 = brm(
+  Trial_tool_direction ~
+    Trial_tool * AgeSt + (1 + AgeSt | ID_id_num),
+  data = db,
+  family = bernoulli(),
+  prior = Priors,
+  chains = 4,
+  iter = 8000,
+  warmup = 6000,
+  cores = 4,
+  control = list(adapt_delta = 0.99, max_treedepth = 15),
+  file = "./Results/Models/DirectionHand"
+)
+
+parameters(mod2, ci= .89)
+
+
+## Table Over Under -------------------------------------------------------
+
+if (file.exists(".\\Results\\Tables\\ToolOver.docx")) {
+  file.remove(".\\Results\\Tables\\ToolOver.docx")
+}else{
+  df |> 
+    # (1) recode p→o…
+    mutate(
+      Grasp_overunder = ifelse(Grasp_overunder == 'p', 'o', Grasp_overunder)
+    ) |>
+    # (2) map letters to words…
+    mutate(
+      Grasp_overunder = fct_recode(
+        Grasp_overunder,
+        over    = "o",
+        under   = "u",
+        mixed   = "m",
+        neither = "n"
+      )
+    ) |>
+    # (2b) *then* set the order of the levels explicitly…
+    mutate(
+      Grasp_overunder = fct_relevel(
+        Grasp_overunder,
+        "over",     # 1st
+        "under",    # 2nd
+        "mixed",    # 3rd
+        "neither"   # 4th
+      )
+    ) |>
+    # (3) summarize & pivot
+    group_by(ID_id_num, Grasp_overunder) |>
+    summarise(Session = n(), .groups = "drop") |> 
+    pivot_wider(
+      names_from  = ID_id_num,
+      values_from = Session,
+      values_fill = 0
+    ) |> 
+
+  gt(rowname_col = "Grasp_overunder") %>%
+  
+  # put a spanner over all the subject‐ID columns
+  tab_spanner(
+    label   = "Subject IDs",
+    columns = everything()
+  ) %>%
+  
+  # center all body cells
+  tab_style(
+    style     = cell_text(align = "center"),
+    locations = cells_body(columns = everything())
+  ) %>%
+  
+  # optionally stripe rows
+  tab_options(
+    row.striping.include_table_body = TRUE
+  ) %>%
+  
+  # save as a Word doc
+  gtsave("Results/Tables/ToolOver.docx")
+  }
