@@ -4,6 +4,10 @@ library(gt)
 library(gtExtras)
 library(easystats)
 
+library(gt)
+library(grid)
+library(png)
+
 
 # Prepare data -------------------------------------------------------
 
@@ -304,6 +308,102 @@ gt_tbl %>%
   )
 
 
+# Table wiht plot below ------------------------------------------------
+
+# Set output dimensions
+TABLE_WIDTH  <- 2000  # Consistent width for both table and plot (pixels)
+TABLE_HEIGHT <- 600   # Height of summary table (pixels)
+PLOT_HEIGHT  <- 800   # Height of session distribution plot (pixels)
+DPI          <- 100   # Resolution for image export
+
+# Create session distribution plot
+plot_data <- df |>
+  mutate(
+    Age = round(Age / 4.33, 1),
+    ID_id_num = fct_rev(ID_id_num),
+
+  ) |>
+  group_by(ID_id_num, Age) |>
+  summarise(Session = n(), .groups = "drop")
+
+age_range <- range(plot_data$Age)
+
+color = '#d0d0d0'
+
+SessPlot = plot_data |>
+  ggplot(aes(x = Age, y = as.numeric(ID_id_num))) +
+
+  geom_point(size = 5.5) +
+  scale_color_brewer(palette = "Paired") +
+  theme_classic(base_size = 36, base_family = "Arial") +  # Add Arial here
+  labs(x = "Age (months)", y = "Participants (Id)", title= 'Session distribution') +
+  coord_cartesian(clip = "off", xlim = age_range) +
+
+  scale_y_continuous(breaks= seq(1,9, by=1),
+    labels = seq(9,1,by=-1)) +
+
+  theme(
+    plot.title = element_text(hjust = -0, size = rel(0.8),color = "#222737"),
+    legend.position = "none",
+    panel.grid.major.x = element_line(color = "#d0d0d0"),
+    # plot.margin = margin(t = 70, r = 50, b = 5, l = 46, unit = "pt"),
+    axis.line.y = element_blank(),
+    axis.ticks.y = element_blank()
+  )
+SessPlot
+
+ggsave(".\\Results\\Tables\\Session_counter_image.png", SessPlot,
+       width = TABLE_WIDTH / DPI,    # Convert pixels to inches
+       height = PLOT_HEIGHT / DPI,
+       dpi = DPI,
+       units = "in")
+
+
+
+# Prepare data for summary table
+filtered_data <- final_table_data |>
+  select(-plot_html) |>              # Remove plot column
+  filter(ID_id_num != "")            # Remove empty rows
+
+# Create formatted summary table
+# Create formatted summary table
+Tbl <- filtered_data |>
+  gt() |>
+  cols_label(
+    ID_id_num = "Id",
+    `First session_months` = "First session",
+    `Last session_months` = "Last session"
+  ) |>
+  tab_spanner("Age (weeks)", c(`First session`, `Last session`)) |>
+  tab_spanner("Age (months)", c(`First session_months`, `Last session_months`)) |>
+  tab_spanner("# of trials", starts_with(c("Spoon", "Brush", "Hammer", "Magnet"))) |>
+  cols_width(` ` ~ px(12), `  ` ~ px(12), `   ` ~ px(12), `    ` ~ px(12)) |>
+  tab_style(
+    style = cell_text(align = "center"),
+    locations = cells_body()
+  ) |>
+  # Hide only the BOTTOM border of the last row
+  tab_style(
+    style = cell_borders(sides = "bottom", style = "hidden"),
+    locations = cells_body(rows = nrow(filtered_data))
+  ) |>
+  tab_options(
+    table.font.size = px(20),
+    table.font.names = "Arial",  # Add Arial here
+    data_row.padding = px(4)
+  ) |>
+  opt_css(css = "
+    #gt_tbl tbody tr:last-child td {
+      padding-top: 2px !important;
+      padding-bottom: 2px !important;
+      height: 40px !important;
+    }
+  ")
+
+# Export table and plot as temporary PNG files
+gtsave(Tbl, ".\\Results\\Tables\\Session_counter_table.png", vwidth = TABLE_WIDTH, vheight = TABLE_HEIGHT)
+
+
 
 # Skipped sessions -------------------------------------------------------
 
@@ -356,3 +456,39 @@ df %>%
 
 gt_tbl %>% gtsave(".\\Results\\Tables\\SessionCounter.html")
 gt_tbl %>% gtsave(".\\Results\\Tables\\SessionCounter.png")
+
+
+# Table adaptive grasps -------------------------------------------------
+Adapt_tbl = df %>%
+  group_by(ID_id_num) %>%
+  summarise(
+    Radial = sum(AdaptiveGrasp == 1),
+    Ulnar = sum(AdaptiveGrasp == 0)
+  ) %>%
+  # 1. Calculate the fraction (Radial / Total)
+  mutate(Pct_Radial = Radial / (Radial + Ulnar)) %>% 
+  rename(ID = ID_id_num) %>%
+  gt() %>%
+  # 2. Format the new column as a percentage (e.g., 0.5 -> 50%)
+  fmt_percent(
+    columns = Pct_Radial,
+    decimals = 1  # Adjust decimals as needed (e.g. 1 for 50.5%, 0 for 51%)
+  ) %>%
+  # 3. Rename the column header to be pretty
+  cols_label(
+    Pct_Radial = "% Radial"
+  ) %>%
+  tab_spanner(
+    label = "Grip",
+    columns = c(Radial, Ulnar)
+  ) %>%
+  cols_align(
+    align = "center",
+    columns = everything()
+  )
+
+Adapt_tbl %>% gtsave(".\\Results\\Tables\\SessionAdaptiveNon-adapive.html")
+Adapt_tbl %>% gtsave(".\\Results\\Tables\\SessionAdaptiveNon-adapive.png")
+Adapt_tbl %>% gtsave(".\\Results\\Tables\\SessionAdaptiveNon-adapive.docx")
+
+

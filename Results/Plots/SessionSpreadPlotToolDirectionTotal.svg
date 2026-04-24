@@ -153,7 +153,7 @@
 <text x='95.20' y='186.89' text-anchor='end' style='font-size: 28.00px;fill: #4D4D4D; font-family: "Arial";' textLength='31.15px' lengthAdjust='spacingAndGlyphs'>10</text>
 <text x='95.20' y='120.67' text-anchor='end' style='font-size: 28.00px;fill: #4D4D4D; font-family: "Arial";' textLength='31.15px' lengthAdjust='spacingAndGlyphs'>12</text>
 <text x='95.20' y='54.46' text-anchor='end' style='font-size: 28.00px;fill: #4D4D4D; font-family: "Arial";' textLength='31.15px' lengthAdjust='spacingAndGlyphs'>14</text>
-<text transform='translate(47.97,259.64) rotate(-90)' text-anchor='middle' style='font-size: 35.00px; font-family: "Arial";' textLength='404.00px' lengthAdjust='spacingAndGlyphs'>Average sessions number</text>
+<text transform='translate(47.97,259.64) rotate(-90)' text-anchor='middle' style='font-size: 35.00px; font-family: "Arial";' textLength='147.86px' lengthAdjust='spacingAndGlyphs'># session</text>
 </g>
 <defs>
   <clipPath id='cpMTEwLjg5fDExNjcuNjN8NTcyLjg3fDEwNDYuMzE='>
@@ -266,7 +266,7 @@
 <text x='967.12' y='1082.05' text-anchor='middle' style='font-size: 28.00px;fill: #4D4D4D; font-family: "Arial";' textLength='15.57px' lengthAdjust='spacingAndGlyphs'>8</text>
 <text x='1078.32' y='1082.05' text-anchor='middle' style='font-size: 28.00px;fill: #4D4D4D; font-family: "Arial";' textLength='15.57px' lengthAdjust='spacingAndGlyphs'>9</text>
 <text x='639.26' y='1121.72' text-anchor='middle' style='font-size: 35.00px; font-family: "Arial";' textLength='155.65px' lengthAdjust='spacingAndGlyphs'>Subject Id</text>
-<text transform='translate(47.97,809.59) rotate(-90)' text-anchor='middle' style='font-size: 35.00px; font-family: "Arial";' textLength='404.00px' lengthAdjust='spacingAndGlyphs'>Average sessions number</text>
+<text transform='translate(47.97,809.59) rotate(-90)' text-anchor='middle' style='font-size: 35.00px; font-family: "Arial";' textLength='147.86px' lengthAdjust='spacingAndGlyphs'># session</text>
 <text x='1196.03' y='313.03' style='font-size: 35.00px; font-family: "Arial";' textLength='64.20px' lengthAdjust='spacingAndGlyphs'>Tool</text>
 <circle cx='1204.67' cy='347.12' r='4.62' style='stroke-width: 0.71; stroke: #31688E; fill: #31688E;' />
 <circle cx='1204.67' cy='373.06' r='4.62' style='stroke-width: 0.71; stroke: #35B779; fill: #35B779;' />

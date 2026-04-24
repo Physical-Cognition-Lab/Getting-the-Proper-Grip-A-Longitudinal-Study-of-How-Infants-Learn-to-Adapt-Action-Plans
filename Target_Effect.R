@@ -3,8 +3,9 @@ library(brms)
 library(tidyverse)
 library(easystats)
 library(patchwork)
+library(ggtext)
 library(emmeans)
-
+library(svglite)
 
 
 # Setting and paths -------------------------------------------------------
@@ -15,6 +16,19 @@ library(emmeans)
 # Load data
 db  =  read.csv('.\\Data\\PlanningInfants_Session_Data.csv')
 
+# Define the full palette (4 tools) for the main legend (MDir1)
+my_colors <- c(
+  Spoon  = "#440154",
+  Hammer = "#31688e",
+  Brush  = "#35b779",
+  Magnet = "#f1a340"
+)
+
+# Define the subset palette (2 tools) for the second plot (MDir2)
+custom_colors2 <- c(
+  "Brush" = "#35b779",
+  "Spoon" = "#440154"
+)
 
 
 # Fix data ---------------------------------------------------------------
@@ -108,38 +122,78 @@ Est_mod2 = estimate_means(mod, by= c('Trial_tool', 'Trial_tool_direction'), ci =
 Est_mod2$Trial_tool_direction = factor(Est_mod2$Trial_tool_direction, 
                                        levels = c("l", "r"), 
                                        labels = c("Handle-left", "Handle-right"))
-custom_colors2 <- c(
-  "Brush"  = "#35b779",
-  "Spoon"  = "#440154"
-)
 
-MDir2 = Est_mod2 %>% 
-  ggplot(aes(x = Trial_tool_direction, y  = Probability  , color = Trial_tool ))+
-  geom_point(size = 5, position = position_dodge(width = 0.5))+
-  geom_errorbar(aes(ymin = CI_low, ymax = CI_high), position = position_dodge(width = 0.5), width =.5, lwd = 1.6)+
-  theme_bw(base_size = 30)+
-  labs(x = '', color = 'Tool', y = 'Estimated probability')+
-  scale_color_manual(values = custom_colors2)
-MDir2
+
+#### 1. PREPARE PLOT 2 (Right Side - No Legend)
+# Create the HTML string for colored text 
+colored_labels <- paste0("<span style='color:", my_colors, "'>", names(my_colors), "</span>")
+names(colored_labels) <- names(my_colors)
+
+
+MDir2 <- Est_mod2 %>% 
+  ggplot(aes(x = Trial_tool_direction, y = Probability, color = Trial_tool)) +
+  geom_point(size = 5, position = position_dodge(width = 0.5)) +
+  geom_errorbar(aes(ymin = CI_low, ymax = CI_high), 
+                position = position_dodge(width = 0.5), width = .5, lwd = 1.6) +
+  theme_bw(base_size = 30) +
+  labs(x = '', y = 'Estimated probability') +
+  scale_color_manual(values = custom_colors2) +
+  
+  # Hide elements for side-by-side view
+  guides(color = "none") + 
+  theme(
+    axis.text.y = element_blank(),  
+    axis.ticks.y = element_blank(), 
+    axis.title.y = element_blank()  
+  ) + 
+  ylim(0.3, 0.85)
+
 ggsave('.\\Results\\Plots\\SelfOther_DirectionRaw.svg',
-       height = 10, width = 12, dpi = 300)
+       height = 10, width = 12, dpi = 300,device = 'svglite')
 
+#### 2. PREPARE PLOT 1 (Left Side - Carrier of the Custom Legend)
 
-MDir1 =  readRDS('.\\Results\\Plots\\ToolDirection.rds' )
+MDir1 <- readRDS('.\\Results\\Plots\\ToolDirection.rds')
 
-MDir1 = MDir1 + labs(color = '') +  theme(legend.position = 'bottom') + ylim(0.3, 0.85)
-MDir2 = MDir2 + labs(color = '') +  theme(legend.position = 'bottom',
-                                          axis.text.y = element_blank(),
-                                          axis.ticks.y = element_blank(),         
-                                          axis.title.y = element_blank()) + ylim(0.3, 0.85)
+# Update MDir1 to use the custom text-only legend
+MDir1 <- MDir1 + 
+  ylim(0.3, 0.85) +
+  
+  # Apply Custom Legend Settings
+  scale_color_manual(
+    values = my_colors,       
+    labels = colored_labels   # Apply the HTML colored labels
+  ) +
+  labs(color = NULL) +        
+  
+  # TRICK: Hide the graphical symbols (dots/lines) in the legend
+  guides(
+    color = guide_legend(
+      override.aes = list(size = 0, linetype = 0, shape = NA) 
+    )
+  ) +
+  
+  theme(
+    legend.position = "bottom",
+    # Render the HTML labels as markdown
+    legend.text = element_markdown(size = 30, face = "bold"), 
+    # Remove the grey background boxes behind legend keys
+    legend.key = element_rect(fill = NA, color = NA) 
+  )
 
+#### 3. COMBINE AND DISPLAY
 
-MDir1 + MDir2 +
+final_plot <- MDir1 + MDir2 +
+  plot_layout(guides = "collect") + 
   plot_annotation(tag_levels = list(c('A', 'B'))) &
-  theme(plot.tag = element_text(size = 30))
+  theme(
+    plot.tag = element_text(size = 30), 
+    legend.position = "bottom"
+  )
 
+final_plot
 ggsave('.\\Results\\Plots\\SelfOther_ComboRaw.svg',
-       height = 8, width = 16, dpi = 300)
+       height = 8, width = 16, dpi = 300, device = 'svglite')
 
  
 # Plot main effect --------------------------------------------------------
@@ -151,71 +205,147 @@ Pred_tool <- emmeans(mod, ~ Trial_tool * Trial_target * AgeSt ,
 
 Pred_tool = as.data.frame(summary(Pred_tool, type = "response", level = 0.89))
 Pred_tool$Age = unstandardise(Pred_tool$AgeSt, reference = df$Age)
- 
+Pred_tool$AgeM = round(unstandardise(Pred_tool$AgeSt, reference = df$Age)/ 4.33, 3)
+
+
+# for each tool i add a small offset on the y axis to avoid overlapping
+db <- db |>
+  mutate(
+    AdaptiveGraspTool = case_when(
+      Trial_target == 'Self' & AdaptiveGrasp == 1 ~ 1.05,   # 1 + 0.5
+      Trial_target == 'Self' & AdaptiveGrasp == 0 ~ -0.05,  # 0 - 0.5
+      
+      Trial_target == 'Other' & AdaptiveGrasp == 1 ~ 1.1,   # 1 + 0.5 + 0.5
+      Trial_target == 'Other' & AdaptiveGrasp == 0 ~ -0.1,  # 0 - 0.5 - 0.5
+      
+      TRUE ~ AdaptiveGrasp
+    ),
+    AgeM = round(Age / 4.33, 3)
+  )  
+
+
 
 ## Set the color for each plot
 my_Spoon = c(Self = "#440154", Other = "#5a4e65")
-Main_Spoon <- Pred_tool %>% 
-  filter(Trial_tool == 'Spoon') %>% 
-  
-  ggplot(aes(x = Age, y = response, color = Trial_target, fill = Trial_target, linetype = Trial_target)) +
-  
-  # Raw data
-  geom_hline(yintercept = c(0,1),  lwd = 1.3, color= 'darkgray', alpha = 0.5) +
-  geom_point(data= filter(db, Trial_tool == 'Spoon'), aes(y= ifelse(AdaptiveGrasp == 1, AdaptiveGrasp+0.1, AdaptiveGrasp-0.1)), size = 2, position = position_jitter(height = 0.05, width = 1))+
+Main_Spoon <- Pred_tool %>%
+  filter(Trial_tool == 'Spoon') %>%
+  mutate(Trial_target = fct_relevel(Trial_target, "Self", "Other")) |> 
+  ggplot(aes(
+    x = AgeM,
+    y = response,
+    color = Trial_target,
+    fill = Trial_target,
+    linetype = Trial_target
+  )) +
 
+  # Raw data
+  geom_hline(yintercept = c(0, 1), lwd = 1.3, color = 'darkgray', alpha = 0.5) +
+  geom_point(
+    data = filter(db, Trial_tool == 'Spoon'),
+    aes(y = AdaptiveGraspTool),
+    size = 3,
+    position = position_jitter(height = 0.018, width = 0.1),
+    alpha = 0.6
+  ) +
 
   geom_line(lwd = 2.2) +
-  geom_ribbon(aes(ymin = lower.HPD, ymax = upper.HPD), color = 'transparent', alpha = 0.4) +
+  geom_ribbon(
+    aes(ymin = lower.HPD, ymax = upper.HPD),
+    color = 'transparent',
+    alpha = 0.4
+  ) +
   geom_hline(yintercept = 0.5, linetype = 'dashed') +
   scale_color_manual(values = my_Spoon) +
   scale_fill_manual(values = my_Spoon) +
-  scale_linetype_manual(values = c("Self" = "solid", "Other" = "dashed")) +  # Correct linetype mapping
-  
-  theme_classic(base_size = 50) + 
-  theme(legend.position = 'bottom',
-        plot.title = element_text(hjust = 0.5),
-        legend.key.width = unit(3, "cm")) +  # Increase legend key width for better visibility
-  labs(x = 'Age (weeks)', y = 'Estimated probability', fill = "", color = "", linetype = "", title = 'Spoon') +
-  scale_y_continuous(breaks = seq(0.2, 1, 0.2), labels = c('0.2', '0.4', '0.6', '0.8', 'Adaptive\nGrasp')) +
-  guides( fill = guide_legend( override.aes = list(alpha    = 1 )))
+  scale_linetype_manual(values = c("Self" = "solid", "Other" = "dashed")) + # Correct linetype mapping
+
+  theme_classic(base_size = 50) +
+  theme(
+    legend.position = 'bottom',
+    plot.title = element_text(hjust = 0.5),
+    legend.key.width = unit(3, "cm")
+  ) + # Increase legend key width for better visibility
+  labs(
+    x = 'Age (months)',
+    y = 'Estimated probability',
+    fill = "",
+    color = "",
+    linetype = "",
+    title = 'Spoon'
+  ) +
+  scale_y_continuous(
+    breaks = seq(0.2, 1, 0.2),
+    labels = c('0.2', '0.4', '0.6', '0.8', 'Adaptive\nGrasp')
+  ) +
+  guides(fill = guide_legend(override.aes = list(alpha = 1)))
 
 Main_Spoon
 
 
 my_Brush = c(Self = "#35b779", Other = "#7e9980")
-Main_Brush = Pred_tool %>% 
-  filter(Trial_tool == 'Brush') %>% 
+Main_Brush = Pred_tool %>%
+  filter(Trial_tool == 'Brush') %>%
+  mutate(Trial_target = fct_relevel(Trial_target, "Self", "Other")) |> 
 
-  ggplot(aes(x = Age, y = response, color = Trial_target, linetype = Trial_target)) +
-  
+  ggplot(aes(
+    x = AgeM,
+    y = response,
+    color = Trial_target,
+    linetype = Trial_target
+  )) +
+
   # Raw data
-  geom_hline(yintercept = c(0,1),  lwd = 1.3, color= 'darkgray', alpha = 0.5) +
-  geom_point(data= filter(db, Trial_tool == 'Brush'), aes(y= ifelse(AdaptiveGrasp == 1, AdaptiveGrasp+0.1, AdaptiveGrasp-0.1)), size = 2, position = position_jitter(height = 0.05, width = 1))+
-
+  geom_hline(yintercept = c(0, 1), lwd = 1.3, color = 'darkgray', alpha = 0.5) +
+  geom_point(
+    data = filter(db, Trial_tool == 'Brush'),
+    aes(y = AdaptiveGraspTool),
+    size = 3,
+    position = position_jitter(height = 0.018, width = 0.1),
+    alpha = 0.6
+  ) +
 
   geom_line(lwd = 2.2) +
-  geom_ribbon(aes(ymin = lower.HPD, ymax = upper.HPD, fill = Trial_target), color = 'transparent', alpha = 0.4) +
+  geom_ribbon(
+    aes(ymin = lower.HPD, ymax = upper.HPD, fill = Trial_target),
+    color = 'transparent',
+    alpha = 0.4
+  ) +
   geom_hline(yintercept = 0.5, linetype = 'dashed') +
   scale_color_manual(values = my_Brush) +
   scale_fill_manual(values = my_Brush) +
   scale_linetype_manual(values = c("Self" = "solid", "Other" = "dashed")) +
-  
-  theme_classic(base_size = 50) + 
-  labs(x = 'Age (weeks)', y = 'Estimated probability', fill = "", color = "", linetype = "", title = 'Brush') +
-  scale_y_continuous(breaks = seq(0.2, 1, 0.2), labels = c('0.2', '0.4', '0.6', '0.8', 'Adaptive\nGrasp')) +
-  theme(legend.position = 'bottom',
-        axis.text.y = element_blank(),
-        axis.title.y = element_blank(),
-        plot.title = element_text(hjust = 0.5),
-        legend.key.width = unit(3, "cm")) + 
-  guides( fill = guide_legend( override.aes = list(alpha    = 1 )))
+
+  theme_classic(base_size = 50) +
+  labs(
+    x = 'Age (months)',
+    y = 'Estimated probability',
+    fill = "",
+    color = "",
+    linetype = "",
+    title = 'Brush'
+  ) +
+  scale_y_continuous(
+    breaks = seq(0.2, 1, 0.2),
+    labels = c('0.2', '0.4', '0.6', '0.8', 'Adaptive\nGrasp')
+  ) +
+  theme(
+    legend.position = 'bottom',
+    axis.text.y = element_blank(),
+    axis.title.y = element_blank(),
+    plot.title = element_text(hjust = 0.5),
+    legend.key.width = unit(3, "cm")
+  ) +
+  guides(
+    fill = guide_legend(override.aes = list(alpha = 1)),
+    color = "none", # Remove color from legend
+    linetype = "none" # Remove linetype from legend
+  )
 
 Main_Brush
 
 Main_Spoon + Main_Brush
 ggsave('.\\Results\\Plots\\SelfOtherDoubleRaw.svg',
-       height = 25, width = 35, dpi = 300)
+       height = 25, width = 35, dpi = 300, device = 'svglite')
 
 
 
@@ -224,117 +354,198 @@ gc()
 
 # Calculate marginal means
 Pre_Subject_tool <- emmeans(mod, ~ Trial_tool * Trial_target * AgeSt | ID_id_num,
-                     at = list(AgeSt = seq(min(db$AgeSt), max(db$AgeSt), .5)),
+                     at = list(AgeSt = seq(min(db$AgeSt), max(db$AgeSt), .1)),
                      re_formula = NULL)
 
 Pre_Subject_tool = as.data.frame(summary(Pre_Subject_tool, type = "response", level = 0.89))
 Pre_Subject_tool$Age = unstandardise(Pre_Subject_tool$AgeSt, reference = df$Age)
+Pre_Subject_tool$AgeM = round(unstandardise(Pre_Subject_tool$AgeSt, reference = df$Age)/ 4.33, 3)
 
 
 ## Plot
 SS = colorRampPalette(c("#f2a9ff","#440154"))(9)
 Self_Spoon = Pre_Subject_tool %>%
-  filter(Trial_target == 'Self', Trial_tool == 'Spoon')%>%
+  filter(Trial_target == 'Self', Trial_tool == 'Spoon') %>%
 
-  ggplot( aes(x = Age, y = response, color = ID_id_num, fill = ID_id_num))+
+  ggplot(aes(x = AgeM, y = response, color = ID_id_num, fill = ID_id_num)) +
 
   # Raw data
-  geom_hline(yintercept = c(0,1),  lwd = 1.3, color= 'darkgray', alpha = 0.5) +
-  geom_point(data= filter(db, Trial_target == 'Self', Trial_tool == 'Spoon'), aes(y= ifelse(AdaptiveGrasp == 1, AdaptiveGrasp+0.1, AdaptiveGrasp-0.1)), size = 2, position = position_jitter(height = 0.05, width = 1))+
-  
-  geom_line(lwd = 1.9)+
-  geom_ribbon(aes(ymin = lower.HPD, ymax = upper.HPD), color = 'transparent', alpha = 0.2)+
-  
-  geom_hline(yintercept = 0.5, linetype = 'dashed')+
-  labs(x = 'Age(weeks)', y = 'Estimated probability')+
-  theme_classic(base_size = 40)+ 
-  theme(legend.position = 'none')+
+  geom_hline(yintercept = c(0, 1), lwd = 1.3, color = 'darkgray', alpha = 0.5) +
+  geom_point(
+    data = filter(db, Trial_target == 'Self', Trial_tool == 'Spoon'),
+    aes(
+      y = ifelse(AdaptiveGrasp == 1, AdaptiveGrasp + 0.1, AdaptiveGrasp - 0.1)
+    ),
+    size = 3,
+    position = position_jitter(height = 0.022, width = 0.01),
+    alpha = 0.7)+
+
+  geom_line(lwd = 1.9) +
+  geom_ribbon(
+    aes(ymin = lower.HPD, ymax = upper.HPD),
+    color = 'transparent',
+    alpha = 0.2
+  ) +
+
+  geom_hline(yintercept = 0.5, linetype = 'dashed') +
+  labs(x = 'Age(months)', y = 'Estimated probability') +
+  theme_classic(base_size = 40) +
+  theme(legend.position = 'none') +
   scale_y_continuous(
     breaks = seq(0, 1, 0.2),
-    labels = c('Non adaptive\nGrasp', '0.2', '0.4', '0.6', '0.8', 'Adaptive\nGrasp')
-  ) +   scale_color_manual(values  = SS )+
-  scale_fill_manual(values  = SS)
+    labels = c(
+      'Non adaptive\nGrasp',
+      '0.2',
+      '0.4',
+      '0.6',
+      '0.8',
+      'Adaptive\nGrasp'
+    )
+  ) +
+  scale_x_continuous(
+    breaks = seq(10, 18, 2),
+  ) +
+  scale_color_manual(values = SS) +
+  scale_fill_manual(values = SS)
 
 
 SO = colorRampPalette(c("#ADA8B6", "#5a4e65"))(9)
 Other_Spoon = Pre_Subject_tool %>%
-  filter(Trial_target == 'Other', Trial_tool == 'Spoon')%>%
+  filter(Trial_target == 'Other', Trial_tool == 'Spoon') %>%
 
-  ggplot( aes(x = Age, y = response, color = ID_id_num, fill = ID_id_num))+
-  
+  ggplot(aes(x = AgeM, y = response, color = ID_id_num, fill = ID_id_num)) +
+
   # Raw data
-  geom_hline(yintercept = c(0,1),  lwd = 1.3, color= 'darkgray', alpha = 0.5) +
-  geom_point(data= filter(db, Trial_target == 'Other', Trial_tool == 'Spoon'), aes(y= ifelse(AdaptiveGrasp == 1, AdaptiveGrasp+0.1, AdaptiveGrasp-0.1)), size = 2, position = position_jitter(height = 0.05, width = 1))+
-  
-  geom_line(lwd = 1.9)+
-  geom_ribbon(aes(ymin = lower.HPD, ymax = upper.HPD), color = 'transparent', alpha = 0.2)+
-  
-  geom_hline(yintercept = 0.5, linetype = 'dashed')+
-  labs(x = 'Age(weeks)', y = '')+
-  theme_classic(base_size = 40)+ 
-  theme(legend.position = 'none',
-        axis.text.y = element_blank())+
+  geom_hline(yintercept = c(0, 1), lwd = 1.3, color = 'darkgray', alpha = 0.5) +
+  geom_point(
+    data = filter(db, Trial_target == 'Other', Trial_tool == 'Spoon'),
+    aes(
+      y = ifelse(AdaptiveGrasp == 1, AdaptiveGrasp + 0.1, AdaptiveGrasp - 0.1)
+    ),
+    size = 3,
+    position = position_jitter(height = 0.022, width = 0.01),
+    alpha = 0.7) +
+
+  geom_line(lwd = 1.9) +
+  geom_ribbon(
+    aes(ymin = lower.HPD, ymax = upper.HPD),
+    color = 'transparent',
+    alpha = 0.2
+  ) +
+
+  geom_hline(yintercept = 0.5, linetype = 'dashed') +
+  labs(x = 'Age(months)', y = '') +
+  theme_classic(base_size = 40) +
+  theme(legend.position = 'none', axis.text.y = element_blank()) +
   scale_y_continuous(
     breaks = seq(0, 1, 0.2),
-    labels = c('Non adaptive\nGrasp', '0.2', '0.4', '0.6', '0.8', 'Adaptive\nGrasp')
-  )+ 
-  scale_color_manual(values  = SO )+
-  scale_fill_manual(values  = SO)
+    labels = c(
+      'Non adaptive\nGrasp',
+      '0.2',
+      '0.4',
+      '0.6',
+      '0.8',
+      'Adaptive\nGrasp'
+    )
+  ) +
+  scale_x_continuous(
+    breaks = seq(10, 18, 2),
+  ) +
+  scale_color_manual(values = SO) +
+  scale_fill_manual(values = SO)
 
 
 
 BS = colorRampPalette(c("#35b779","#455335"))(9)
 Self_Brush = Pre_Subject_tool %>%
-  filter(Trial_target == 'Self', Trial_tool == 'Brush')%>%
+  filter(Trial_target == 'Self', Trial_tool == 'Brush') %>%
 
-  ggplot( aes(x = Age, y = response, color = ID_id_num, fill = ID_id_num))+
-  
+  ggplot(aes(x = AgeM, y = response, color = ID_id_num, fill = ID_id_num)) +
+
   # Raw data
-  geom_hline(yintercept = c(0,1),  lwd = 1.3, color= 'darkgray', alpha = 0.5) +
-  geom_point(data= filter(db, Trial_target == 'Self', Trial_tool == 'Brush'), aes(y= ifelse(AdaptiveGrasp == 1, AdaptiveGrasp+0.1, AdaptiveGrasp-0.1)), size = 2, position = position_jitter(height = 0.05, width = 1))+
-  
+  geom_hline(yintercept = c(0, 1), lwd = 1.3, color = 'darkgray', alpha = 0.5) +
+  geom_point(
+    data = filter(db, Trial_target == 'Self', Trial_tool == 'Brush'),
+    aes(
+      y = ifelse(AdaptiveGrasp == 1, AdaptiveGrasp + 0.1, AdaptiveGrasp - 0.1)
+    ),
+    size = 3,
+    position = position_jitter(height = 0.022, width = 0.01),
+    alpha = 0.7) +
 
-  geom_line(lwd = 1.9)+
-  geom_ribbon(aes(ymin = lower.HPD, ymax = upper.HPD), color = 'transparent', alpha = 0.2)+
-  
-  geom_hline(yintercept = 0.5, linetype = 'dashed')+
-  labs(x = 'Age(weeks)', y = '')+
-  theme_classic(base_size = 40)+ 
-  theme(legend.position = 'none',
-        axis.text.y = element_blank())+
+  geom_line(lwd = 1.9) +
+  geom_ribbon(
+    aes(ymin = lower.HPD, ymax = upper.HPD),
+    color = 'transparent',
+    alpha = 0.2
+  ) +
+
+  geom_hline(yintercept = 0.5, linetype = 'dashed') +
+  labs(x = 'Age(months)', y = '') +
+  theme_classic(base_size = 40) +
+  theme(legend.position = 'none', axis.text.y = element_blank()) +
   scale_y_continuous(
     breaks = seq(0, 1, 0.2),
-    labels = c('Non adaptive\nGrasp', '0.2', '0.4', '0.6', '0.8', 'Adaptive\nGrasp')
-  )+ 
-  scale_color_manual(values  = BS )+
-  scale_fill_manual(values  = BS)
+    labels = c(
+      'Non adaptive\nGrasp',
+      '0.2',
+      '0.4',
+      '0.6',
+      '0.8',
+      'Adaptive\nGrasp'
+    )
+  ) +
+  scale_x_continuous(
+    breaks = seq(10, 18, 2),
+  ) +
+  scale_color_manual(values = BS) +
+  scale_fill_manual(values = BS)
 
 
 BO = colorRampPalette(c("#ADA8B6", "#7e9980"))(9)
 Other_Brush = Pre_Subject_tool %>%
-  filter(Trial_target == 'Other', Trial_tool == 'Brush')%>%
+  filter(Trial_target == 'Other', Trial_tool == 'Brush') %>%
 
-  ggplot( aes(x = Age, y = response, color = ID_id_num, fill = ID_id_num))+
-  
+  ggplot(aes(x = AgeM, y = response, color = ID_id_num, fill = ID_id_num)) +
+
   # Raw data
-  geom_hline(yintercept = c(0,1),  lwd = 1.3, color= 'darkgray', alpha = 0.5) +
-  geom_point(data= filter(db, Trial_target == 'Other', Trial_tool == 'Brush'), aes(y= ifelse(AdaptiveGrasp == 1, AdaptiveGrasp+0.1, AdaptiveGrasp-0.1)), size = 2, position = position_jitter(height = 0.05, width = 1))+
-  
+  geom_hline(yintercept = c(0, 1), lwd = 1.3, color = 'darkgray', alpha = 0.5) +
+  geom_point(
+    data = filter(db, Trial_target == 'Other', Trial_tool == 'Brush'),
+    aes(
+      y = ifelse(AdaptiveGrasp == 1, AdaptiveGrasp + 0.1, AdaptiveGrasp - 0.1)
+    ),
+    size = 3,
+    position = position_jitter(height = 0.022, width = 0.01),
+    alpha = 0.7) +
 
-  geom_line(lwd = 1.9)+
-  geom_ribbon(aes(ymin = lower.HPD, ymax = upper.HPD), color = 'transparent', alpha = 0.2)+
-  
-  geom_hline(yintercept = 0.5, linetype = 'dashed')+
-  labs(x = 'Age(weeks)', y = '')+
-  theme_classic(base_size = 40)+ 
-  theme(legend.position = 'none',
-        axis.text.y = element_blank())+
+  geom_line(lwd = 1.9) +
+  geom_ribbon(
+    aes(ymin = lower.HPD, ymax = upper.HPD),
+    color = 'transparent',
+    alpha = 0.2
+  ) +
+
+  geom_hline(yintercept = 0.5, linetype = 'dashed') +
+  labs(x = 'Age(months)', y = '') +
+  theme_classic(base_size = 40) +
+  theme(legend.position = 'none', axis.text.y = element_blank()) +
   scale_y_continuous(
     breaks = seq(0, 1, 0.2),
-    labels = c('Non adaptive\nGrasp', '0.2', '0.4', '0.6', '0.8', 'Adaptive\nGrasp')
-  )+ 
-  scale_color_manual(values  = BO )+
-  scale_fill_manual(values  = BO)
+    labels = c(
+      'Non adaptive\nGrasp',
+      '0.2',
+      '0.4',
+      '0.6',
+      '0.8',
+      'Adaptive\nGrasp'
+    )
+  ) +
+  scale_x_continuous(
+    breaks = seq(10, 18, 2),
+  ) +
+  scale_color_manual(values = BO) +
+  scale_fill_manual(values = BO)
 
 
 
@@ -349,7 +560,7 @@ Top / Bottom +
 
 
 ggsave('.\\Results\\Plots\\SelfOtherComboRaw.svg',
-       height = 30, width = 30, dpi = 300)
+       height = 30, width = 30, dpi = 300, device = 'svglite')
 
 
 
@@ -437,7 +648,7 @@ SesXDirTargetPlot  =
         padding  = 1.2,   # ← controls distance between shapes *within* each colour
         preserve = "single"
       )) +
-  labs(x = 'Subject Id', y = 'Average sessions number', shape= 'Direction', color= 'Tool')+
+  labs(x = 'Subject Id', y = '# session', shape= 'Direction', color= 'Tool')+
   
   scale_y_continuous(breaks = seq(2, 18, 2))+
   scale_x_continuous(breaks = seq(1, 9, 1)*4, labels = seq(1, 9, 1))+
@@ -469,7 +680,7 @@ guides(
     legend.justification = "center"
   )
 
-ggsave('.\\Results\\Plots\\SessionSpreadPlotToolDirectionTotal.svg',  height = 16, width = 20, dpi = 300)
+ggsave('.\\Results\\Plots\\SessionSpreadPlotToolDirectionTotal.svg',  height = 16, width = 20, dpi = 300, device = 'svglite')
 
 
 
